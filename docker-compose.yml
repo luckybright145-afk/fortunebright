@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: fortunebright_db
+    environment:
+      POSTGRES_USER: ${DB_USER:-fortunebright}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-secure_password}
+      POSTGRES_DB: ${DB_NAME:-fortunebright_db}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - fortunebright_network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: fortunebright_backend
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://${DB_USER:-fortunebright}:${DB_PASSWORD:-secure_password}@postgres:5432/${DB_NAME:-fortunebright_db}
+      JWT_SECRET: ${JWT_SECRET:-your_jwt_secret_key_change_in_production}
+      PAYSTACK_SECRET_KEY: ${PAYSTACK_SECRET_KEY}
+    ports:
+      - "5000:5000"
+    depends_on:
+      - postgres
+    networks:
+      - fortunebright_network
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: fortunebright_frontend
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:5000/api
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - fortunebright_network
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+
+volumes:
+  postgres_data:
+
+networks:
+  fortunebright_network:
+    driver: bridge
